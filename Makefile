@@ -5,11 +5,13 @@ SOURCEDIR=src
 
 all:
 	gcc -O2 ${COMMANDLINEE} -c ${SOURCEDIR}/eco_system.c -o eco_system.o
+	gcc -O2 ${COMMANDLINEE} -c ${SOURCEDIR}/eco_search.c -o eco_search.o
 	gcc -O2 ${COMMANDLINEE} -c ${SOURCEDIR}/eco_commandline.c -o eco_commandline.o
 	gcc -O2 ${COMMANDLINEE} -I/usr/include -o ${APP} *.o -lz -lm -lpthread
 	rm *.o
 debug:
 	gcc -g ${COMMANDLINEE} -c ${SOURCEDIR}/eco_system.c -o eco_system.o
+	gcc -g ${COMMANDLINEE} -c ${SOURCEDIR}/eco_search.c -o eco_search.o
 	gcc -g ${COMMANDLINEE} -c ${SOURCEDIR}/eco_commandline.c -o eco_commandline.o
 	gcc -g ${COMMANDLINEE} -I/usr/include -o ${APP} *.o -lz -lm -lpthread
 	rm *.o
