@@ -37,8 +37,10 @@
 #ifndef __ECOSIM_H__
 #define __ECOSIM_H__
 
-typedef double e_real;
-typedef long   e_int;
+typedef double          e_real;
+typedef long            e_int;
+typedef unsigned short  e_16bit;
+typedef char *          e_string;
 
 typedef enum
 {
@@ -47,12 +49,12 @@ typedef enum
     ENTITY_BUSH,
     ENTITY_TREE,
     
+    ENTITY_FISH,
+    
     ENTITY_SEED_EATING_BIRD,
     ENTITY_INSECT_EATING_BIRD,
     ENTITY_SEA_BIRD,
     ENTITY_BIRD_OF_PREY,
-    
-    ENTITY_FISH,
     
     ENTITY_INSECT,
     ENTITY_MOUSE,
@@ -63,37 +65,55 @@ typedef enum
     ENTITY_APE,
     ENTITY_SIZE,
     
-    ENTITY_SUN
+    ENTITY_DEAD_ANIMAL,
 } ECOSIM_ENTITY;
 
-/*
- 
- Apes eat Bushes and Fish
- 
- Birds of Prey eats Fish, Frogs, Mice and the Dead Animals
- 
- Cats eat Apes, Birds of Prey, Insect Eating Birds. Sea Birds and Lizards
- 
- Frogs eat Insects
- 
- Insect Eating Birds eat Insects
- 
- Insects eat Bushes, Grasses, Trees and the Dead Animals
- 
- Lizards eat Insect Eating Birds, Insects, Insect Eating Birds (eggs)
- 
- Mice at Grass
- 
- Sea Birds eat Fish
- 
- Seed Eating Birds eat Bushes
- 
- */
+#define ENTITY_CONSUMPTION (22)
 
-void ecosim_init(void);
+#define ENTITY_GENETICS (ENTITY_SIZE + ENTITY_CONSUMPTION)
+
+typedef enum
+{
+    SIZE_1_GRAM = 1,
+    SIZE_20_GRAM = 20,
+    SIZE_400_GRAM = 400,
+    SIZE_8_KILOGRAMS = 8000,
+    SIZE_160_KILOGRAMS = 160000,
+    SIZE_3200_KILOGRAMS = 3200000,
+    SIZE_BOUNDARY = 64000000,
+}ECOSIM_SIZE;
+
+typedef enum
+{
+    EFFICIENCY_NOT_APPLICABLE = 0,
+    EFFICIENCY_VERY_POOR      = (2 - 1),
+    EFFICIENCY_POOR           = (4 - 1),
+    EFFICIENCY_MODERATE       = (8 - 1),
+    EFFICIENCY_GOOD           = (16 - 1),
+    EFFICIENCY_VERY_GOOD      = (32 - 1),
+    EFFICIENCY_EXCELLENT      = (64 - 1),
+}ECOSIM_CONSUMPTION_EFFICIENCY;
+
+#define ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR (6.4E+01)
+
+typedef enum
+{
+    EVENT_EXTINCTION = 0,
+    EVENT_SIZE
+}ECOSIM_EVENT;
+
+typedef void (ecosim_events)(ECOSIM_EVENT event, e_string information);
+
+void ecosim_init(e_16bit * genetics);
 
 void ecosim_cycle(void);
 
-e_int ecosim_population(ECOSIM_ENTITY entity);
+void ecosim_populate_genetics(e_16bit * seed, e_16bit * genetics);
+
+e_real ecosim_population(ECOSIM_ENTITY entity);
+
+e_16bit ecosim_random(e_16bit * local); /* taken from Noble Ape */
+
+void ecosim_subscribe(ecosim_events * event_subscriber);
 
 #endif /* __ECOSIM_H__ */

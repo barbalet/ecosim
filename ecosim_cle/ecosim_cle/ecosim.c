@@ -35,17 +35,241 @@
 
 #include "ecosim.h"
 
-void ecosim_init(void)
+static ecosim_events * event_subscription = 0L;
+
+static e_real population[ENTITY_SIZE];
+static e_real total_energy[ENTITY_SIZE - ENTITY_FISH];
+
+static e_real dead_animal_energy;
+
+const ECOSIM_SIZE entity_to_size[ENTITY_SIZE] =
 {
+    SIZE_20_GRAM,        /* ENTITY_GRASS */
+    SIZE_160_KILOGRAMS,  /* ENTITY_BUSH */
+    SIZE_3200_KILOGRAMS, /* ENTITY_TREE */
     
+    SIZE_400_GRAM, /* ENTITY_FISH */
+    
+    SIZE_400_GRAM, /* ENTITY_SEED_EATING_BIRD */
+    SIZE_400_GRAM, /* ENTITY_INSECT_EATING_BIRD */
+    SIZE_8_KILOGRAMS, /* ENTITY_SEA_BIRD */
+    SIZE_8_KILOGRAMS, /* ENTITY_BIRD_OF_PREY */
+    
+    SIZE_1_GRAM, /* ENTITY_INSECT */
+    SIZE_20_GRAM, /* ENTITY_MOUSE */
+    SIZE_20_GRAM, /* ENTITY_FROG */
+    
+    SIZE_8_KILOGRAMS, /* ENTITY_LIZARD */
+    SIZE_8_KILOGRAMS, /* ENTITY_CAT */
+    SIZE_160_KILOGRAMS, /* ENTITY_APE */
+};
+
+const ECOSIM_CONSUMPTION_EFFICIENCY entity_to_efficiency[ENTITY_SIZE - ENTITY_FISH] =
+{
+    EFFICIENCY_MODERATE, /* ENTITY_SEED_EATING_BIRD */
+    EFFICIENCY_VERY_GOOD, /* ENTITY_INSECT_EATING_BIRD */
+    EFFICIENCY_VERY_GOOD, /* ENTITY_SEA_BIRD */
+    EFFICIENCY_VERY_GOOD, /* ENTITY_BIRD_OF_PREY */
+    
+    EFFICIENCY_EXCELLENT, /* ENTITY_INSECT */
+    EFFICIENCY_MODERATE, /* ENTITY_MOUSE */
+    EFFICIENCY_VERY_GOOD, /* ENTITY_FROG */
+    
+    EFFICIENCY_VERY_GOOD, /* ENTITY_LIZARD */
+    EFFICIENCY_MODERATE, /* ENTITY_CAT */
+    EFFICIENCY_MODERATE, /* ENTITY_APE */
+};
+
+#define MAX_EATS (5)
+
+const ECOSIM_ENTITY entity_eats[ENTITY_SIZE - ENTITY_FISH][MAX_EATS] =
+{
+/* ENTITY_SEED_EATING_BIRD */  { ENTITY_BUSH },
+/* ENTITY_INSECT_EATING_BIRD */{ ENTITY_INSECT },
+/* ENTITY_SEA_BIRD */          { ENTITY_FISH },
+/* ENTITY_BIRD_OF_PREY */      { ENTITY_FISH,               ENTITY_DEAD_ANIMAL,     ENTITY_MOUSE, },
+
+/* ENTITY_INSECT */            { ENTITY_BUSH,               ENTITY_DEAD_ANIMAL,     ENTITY_GRASS,  ENTITY_TREE, },
+/* ENTITY_MOUSE */             { ENTITY_GRASS },
+/* ENTITY_FROG */              { ENTITY_INSECT },
+
+/* ENTITY_LIZARD */            { ENTITY_INSECT_EATING_BIRD, ENTITY_SEED_EATING_BIRD, ENTITY_INSECT },
+/* ENTITY_CAT */               { ENTITY_INSECT_EATING_BIRD, ENTITY_BIRD_OF_PREY,     ENTITY_APE,    ENTITY_SEA_BIRD, ENTITY_LIZARD },
+/* ENTITY_APE */               { ENTITY_BUSH,               ENTITY_FISH}
+};
+
+e_real consumption_rate[ENTITY_CONSUMPTION];
+e_real growth_rate[ENTITY_SIZE];
+
+static e_int ecosim_contributes_to_dead_animal_energy(ECOSIM_ENTITY entity)
+{
+    return (entity > ENTITY_FISH);
+}
+
+static e_int ecosim_is_plant(ECOSIM_ENTITY entity)
+{
+    return (entity < ENTITY_FISH);
+}
+
+void ecosim_subscribe(ecosim_events * event_subscriber)
+{
+    event_subscription = event_subscriber;
+}
+
+e_16bit math_random(e_16bit * local)
+{
+    e_16bit tmp0;
+    e_16bit tmp1;
+    
+    if (local == 0L) return 0;
+    
+    tmp0 = local[0];
+    tmp1 = local[1];
+    
+    local[0] = tmp1;
+    switch (tmp0 & 7)
+    {
+        case 0:
+            local[1] = (e_16bit)(tmp1 ^ (tmp0 >> 1) ^ 0xd028);
+            break;
+        case 3:
+            local[1] = (e_16bit)(tmp1 ^ (tmp0 >> 2) ^ 0xae08);
+            break;
+        case 7:
+            local[1] = (e_16bit)(tmp1 ^ (tmp0 >> 3) ^ 0x6320);
+            break;
+        default:
+            local[1] = (e_16bit)(tmp1 ^ (tmp0 >> 1));
+            break;
+    }
+    return tmp1;
+}
+
+void ecosim_populate_genetics(e_16bit * seed, e_16bit * genetics)
+{
+    e_int loop = 0;
+    while (loop < ENTITY_GENETICS)
+    {
+        genetics[loop++] = math_random(seed);
+    }
+}
+
+
+static e_real ecosim_initial_population(ECOSIM_ENTITY entity)
+{
+    return (((e_real)SIZE_BOUNDARY)) / ((e_real)entity_to_size[entity]);
+}
+
+e_real ecosim_genetics_to_real(e_16bit value)
+{
+    e_int int_value = ((e_int)value) + 1;
+    
+    return ((e_real)int_value / 1E+6);
+}
+
+void ecosim_init(e_16bit * genetics)
+{
+    e_int  loop = 0;
+    ECOSIM_ENTITY entity = ENTITY_GRASS;
+    dead_animal_energy = (e_real)(SIZE_BOUNDARY)/2E+00;
+    while (entity < ENTITY_SIZE)
+    {
+        population[entity] = ecosim_initial_population(entity);
+        entity++;
+    }
+    entity = ENTITY_GRASS;
+    while (entity < ENTITY_SIZE)
+    {
+        total_energy[entity - ENTITY_FISH] = (e_real)(SIZE_BOUNDARY)/2E+00;
+        entity++;
+    }
+    
+    while (loop < ENTITY_SIZE)
+    {
+        growth_rate[loop] = ecosim_genetics_to_real(genetics[loop]);
+        loop++;
+    }
+    loop = 0;
+    while (loop < ENTITY_CONSUMPTION)
+    {
+        consumption_rate[loop] = ecosim_genetics_to_real(genetics[loop + ENTITY_SIZE]);
+        loop++;
+    }
 }
 
 void ecosim_cycle(void)
 {
+    ECOSIM_ENTITY entity = ENTITY_GRASS;
+    e_real new_population[ENTITY_SIZE];
+    e_int  track_consumption = 0;
     
+    /* Handle Growth Rate Calculations */
+    
+    while (entity < ENTITY_SIZE)
+    {
+        new_population[entity] = population[entity];
+        
+        if (ecosim_is_plant(entity))
+        {
+            new_population[entity] += (growth_rate[entity]) * new_population[entity];
+            
+        } else if (ecosim_contributes_to_dead_animal_energy(entity))
+        {
+            e_real delta_growth = growth_rate[entity] * new_population[entity];
+            e_real delta_energy = delta_growth * (e_real)(entity_to_size[entity]);
+            if (delta_energy > total_energy[entity - ENTITY_FISH])
+            {
+                delta_energy = total_energy[entity - ENTITY_FISH];
+                delta_growth = delta_energy / (e_real)(entity_to_size[entity]);
+            }
+            
+            new_population[entity] += delta_growth;
+            total_energy[entity - ENTITY_FISH] -= delta_energy;
+        }
+        entity++;
+    }
+    
+    entity = ENTITY_GRASS;
+    
+    while (entity < ENTITY_SIZE)
+    {
+        if (ecosim_contributes_to_dead_animal_energy(entity))
+        {
+            e_int  loop = 0;
+            e_real efficiency = (((e_real)entity_to_efficiency[entity - ENTITY_FISH]) / ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR);
+            while (loop < MAX_EATS)
+            {
+                ECOSIM_ENTITY eaten_entity = entity_eats[entity][loop];
+                if (eaten_entity != ENTITY_NONE)
+                {
+                    e_real consumption = consumption_rate[track_consumption];
+                    
+                    if (eaten_entity == ENTITY_DEAD_ANIMAL)
+                    {
+                        /* TODO */
+                    }
+                    else
+                    {
+                        /* TODO */
+                    }
+                    track_consumption++;
+                }
+                loop++;
+            }
+        }
+        entity++;
+    }
+    
+    entity = ENTITY_GRASS;
+
+    while (entity < ENTITY_SIZE)
+    {
+        new_population[entity] = population[entity];
+        entity++;
+    }
 }
 
-e_int ecosim_population(ECOSIM_ENTITY entity)
+e_real ecosim_population(ECOSIM_ENTITY entity)
 {
-    return 1;
+    return population[entity];
 }

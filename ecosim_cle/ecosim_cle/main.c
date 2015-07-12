@@ -34,13 +34,28 @@
  ****************************************************************/
 
 #include <stdio.h>
+#include <time.h>
 #include "ecosim.h"
 
 int main(int argc, const char * argv[])
 {
+    e_16bit genetics[ENTITY_GENETICS];
+    e_16bit seed[2];
+    e_int current_time = time(NULL);
     e_int time = 0;
     
-    ecosim_init();
+    if (current_time < 0)
+    {
+        current_time = 0 - current_time;
+    }
+    
+    seed[0] = current_time & 0xffff;
+    
+    seed[1] = (current_time >> 16) & 0xffff;
+    
+    ecosim_populate_genetics(seed, genetics);
+    
+    ecosim_init(genetics);
     
     while (time < 100)
     {
