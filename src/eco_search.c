@@ -38,18 +38,17 @@
 #include <string.h>
 
 /* test a given ecosystem */
-void search_test(ecosim_genome * eco, unsigned int itterations, int show)
+void search_test(ecosim_search * sim, ecosim_genome * eco, unsigned int species, unsigned int itterations, int show)
 {
     unsigned int p, i;
     unsigned int all_surviving = 1;
 
-    system_init(eco);
     i = eco->survival_steps = 0;
     while (i < itterations)
     {
-        system_cycle(eco, show);
-        if (show != 0) show_output_short(eco);
-        for (p = 0; p < cSize; p++) {
+        system_cycle(eco, species, show);
+        if (show != 0) show_output_short(sim);
+        for (p = 0; p < species; p++) {
             if (all_surviving == 1) {
                 if ((eco->pop[p] <= 0) ||
                     (eco->pop[p] >= 200)) {
@@ -98,46 +97,34 @@ void search_sort(ecosim_search * sim)
 /* produce the next set of samples */
 void samples_renew(ecosim_search * sim)
 {
-    int i, j, e, elitism, parent1, parent2;
+    int i, j, e, elitism;
     ecosim_search prev_sim;
+    int parent[2];
 
     memcpy((void*)&prev_sim, (void*)sim, sizeof(ecosim_search));
 
     elitism = SEARCH_SAMPLES/2;
 
     for (i = 0; i < SEARCH_SAMPLES; i++) {
-        parent1 = rand() % elitism;
-        parent2 = rand() % elitism;
-        for (j = 0; j < cSize; j++) {
-            for (e = 0; e < 6; e++) {
+        parent[0] = rand() % elitism;
+        parent[1] = rand() % elitism;
+        for (j = 0; j < sim->species; j++) {
+            e = 0;
+            while (sim->genome[i].eats[j].species_index[e] != -1) {
                 /* breed */
-                sim->genome[i].eats[j][e] = prev_sim.genome[rand()%2].eats[j][e];
+                sim->genome[i].eats[j].rate[e] = prev_sim.genome[parent[rand()%2]].eats[j].rate[e];
                 /* mutate */
-                sim->genome[i].eats[j][e] += ((rand()%20000/10000.0)-1.0)*sim->mutation_rate;
-                if (sim->genome[i].eats[j][e] < MIN_EATS) sim->genome[i].eats[j][e] = MIN_EATS;
-                if (sim->genome[i].eats[j][e] > MAX_EATS) sim->genome[i].eats[j][e] = MAX_EATS;
+                sim->genome[i].eats[j].rate[e] += ((rand()%20000/10000.0)-1.0)*sim->mutation_rate;
+                if (sim->genome[i].eats[j].rate[e] < MIN_EATS) sim->genome[i].eats[j].rate[e] = MIN_EATS;
+                if (sim->genome[i].eats[j].rate[e] > MAX_EATS) sim->genome[i].eats[j].rate[e] = MAX_EATS;
+                e++;
             }
             /* breed */
-            sim->genome[i].growth[j] = prev_sim.genome[rand()%2].growth[j];
+            sim->genome[i].growth[j] = prev_sim.genome[parent[rand()%2]].growth[j];
             /* mutate */
             sim->genome[i].growth[j] += ((rand()%20000/10000.0)-1.0)*sim->mutation_rate;
             if (sim->genome[i].growth[j] < MIN_GROWTH) sim->genome[i].growth[j] = MIN_GROWTH;
             if (sim->genome[i].growth[j] > MAX_GROWTH) sim->genome[i].growth[j] = MAX_GROWTH;
-        }
-    }
-}
-
-/* initialise with random values */
-void search_init(ecosim_search * sim)
-{
-    int i, j, e;
-
-    for (i = 0; i < SEARCH_SAMPLES; i++) {
-        for (j = 0; j < cSize; j++) {
-            for (e = 0; e < 6; e++) {
-                sim->genome[i].eats[j][e] = MIN_EATS + ((rand()%20000/20000.0)*(MAX_EATS-MIN_EATS));
-            }
-            sim->genome[i].growth[j] = MIN_GROWTH + ((rand()%20000/20000.0)*(MAX_GROWTH-MIN_GROWTH));
         }
     }
 }
@@ -148,7 +135,7 @@ void search_cycle(ecosim_search * sim)
 
 #pragma omp parallel for
     for (i = 0; i < SEARCH_SAMPLES; i++) {
-        search_test(&sim->genome[i], sim->itterations, 0);
+        search_test(sim, &sim->genome[i], sim->species, sim->itterations, 0);
     }
 
     sim->collapses=0;
@@ -162,4 +149,14 @@ void search_cycle(ecosim_search * sim)
            sim->collapses*100.0/SEARCH_SAMPLES);
 
     search_sort(sim);
+}
+
+void set_species_name(ecosim_search * sim, unsigned int index, char * name)
+{
+    strcpy((char*)&sim->species_name[index], name);
+}
+
+void set_species_name_short(ecosim_search * sim, unsigned int index, char * short_name)
+{
+    strcpy((char*)&sim->species_name_short[index], short_name);
 }
