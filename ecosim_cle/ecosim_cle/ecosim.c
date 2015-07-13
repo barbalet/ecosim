@@ -100,6 +100,7 @@ const ECOSIM_ENTITY entity_eats[ENTITY_SIZE - ENTITY_FISH][MAX_EATS] =
 
 e_real consumption_rate[ENTITY_CONSUMPTION];
 e_real growth_rate[ENTITY_SIZE];
+e_real death_rate[ENTITY_SIZE - ENTITY_FISH];
 
 static e_int ecosim_contributes_to_dead_animal_energy(ECOSIM_ENTITY entity)
 {
@@ -201,6 +202,7 @@ void ecosim_cycle(void)
 {
     ECOSIM_ENTITY entity = ENTITY_GRASS;
     e_real new_population[ENTITY_SIZE];
+    e_real new_dead_animal_energy = dead_animal_energy;
     e_int  track_consumption = 0;
     
     /* Handle Growth Rate Calculations */
@@ -211,20 +213,14 @@ void ecosim_cycle(void)
         
         if (ecosim_is_plant(entity))
         {
-            new_population[entity] += (growth_rate[entity]) * new_population[entity];
+            new_population[entity] += growth_rate[entity] * new_population[entity];
             
         } else if (ecosim_contributes_to_dead_animal_energy(entity))
         {
-            e_real delta_growth = growth_rate[entity] * new_population[entity];
-            e_real delta_energy = delta_growth * (e_real)(entity_to_size[entity]);
-            if (delta_energy > total_energy[entity - ENTITY_FISH])
-            {
-                delta_energy = total_energy[entity - ENTITY_FISH];
-                delta_growth = delta_energy / (e_real)(entity_to_size[entity]);
-            }
+            e_real  actual_death_rate = death_rate[entity] * new_population[entity];
+            new_population[entity] -= actual_death_rate;
+            dead_animal_energy += (actual_death_rate * (e_real)(entity_to_size[entity]));
             
-            new_population[entity] += delta_growth;
-            total_energy[entity - ENTITY_FISH] -= delta_energy;
         }
         entity++;
     }
@@ -237,6 +233,8 @@ void ecosim_cycle(void)
         {
             e_int  loop = 0;
             e_real efficiency = (((e_real)entity_to_efficiency[entity - ENTITY_FISH]) / ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR);
+            e_real efficiency_wasted = (((e_real)(ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR - entity_to_efficiency[entity - ENTITY_FISH])) / ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR);
+            e_real delta_energy = 0;
             while (loop < MAX_EATS)
             {
                 ECOSIM_ENTITY eaten_entity = entity_eats[entity][loop];
@@ -246,15 +244,56 @@ void ecosim_cycle(void)
                     
                     if (eaten_entity == ENTITY_DEAD_ANIMAL)
                     {
-                        /* TODO */
+                        e_real entity_energy = efficiency * consumption * dead_animal_energy;
+                        if (entity_energy > 0)
+                        {
+                            new_dead_animal_energy = new_dead_animal_energy - entity_energy;
+                            delta_energy = delta_energy + entity_energy;
+                        }
                     }
                     else
                     {
-                        /* TODO */
+                        e_real entity_consumed = consumption * population[eaten_entity];
+                        e_real entity_consumed_energy = entity_consumed * (e_real)entity_to_size[eaten_entity];
+                        
+                        delta_energy = delta_energy + (entity_consumed_energy * efficiency);
+                        if (ecosim_contributes_to_dead_animal_energy(eaten_entity))
+                        {
+                            new_dead_animal_energy = new_dead_animal_energy + (entity_consumed_energy * efficiency_wasted);
+                        }
                     }
+                    
                     track_consumption++;
                 }
                 loop++;
+            }
+            {
+                /*
+                e_real delta_growth = delta_energy / (e_real)(entity_to_size[entity]);
+                e_real projected_growth = population[entity] * growth_rate[entity];
+                
+                 three cases -
+                    there is energy to save, 
+                    there is enough energy to make th expected growth rate, OR,
+                    the energy available will impact the growth rate */
+                
+                
+ /*               if (delta_growth > projected_growth)
+                {
+                    e_real projected_growth_energy = projected_growth * (e_real)(entity_to_size[entity]);
+                    
+                    new_population[entity] =  new_population[entity] + projected_growth;
+                    
+                    
+                    energy[entity] = energy[entity] + delta_energy - projected_growth_energy;
+                }
+                else
+                {
+                    if (energy[entity] > delta_energy)
+                    
+                    energy[entity] = energy[entity] - delta_energy;
+                    new_population[entity] =  new_population[entity] + delta_growth;
+                }*/
             }
         }
         entity++;
