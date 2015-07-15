@@ -219,7 +219,7 @@ void ecosim_cycle(void)
         {
             e_real  actual_death_rate = death_rate[entity] * new_population[entity];
             new_population[entity] -= actual_death_rate;
-            dead_animal_energy += (actual_death_rate * (e_real)(entity_to_size[entity]));
+            new_dead_animal_energy += (actual_death_rate * (e_real)(entity_to_size[entity]));
             
         }
         entity++;
@@ -268,32 +268,20 @@ void ecosim_cycle(void)
                 loop++;
             }
             {
-                /*
-                e_real delta_growth = delta_energy / (e_real)(entity_to_size[entity]);
                 e_real projected_growth = population[entity] * growth_rate[entity];
-                
-                 three cases -
-                    there is energy to save, 
-                    there is enough energy to make th expected growth rate, OR,
-                    the energy available will impact the growth rate */
-                
-                
- /*               if (delta_growth > projected_growth)
+                e_real projected_energy = projected_growth * (e_real)(entity_to_size[entity]);
+                e_real total_entity_energy = total_energy[entity] + delta_energy;
+                                                                      
+                if (projected_energy <= total_entity_energy)
                 {
-                    e_real projected_growth_energy = projected_growth * (e_real)(entity_to_size[entity]);
-                    
-                    new_population[entity] =  new_population[entity] + projected_growth;
-                    
-                    
-                    energy[entity] = energy[entity] + delta_energy - projected_growth_energy;
+                    total_energy[entity] = total_entity_energy - projected_energy;
                 }
                 else
                 {
-                    if (energy[entity] > delta_energy)
-                    
-                    energy[entity] = energy[entity] - delta_energy;
-                    new_population[entity] =  new_population[entity] + delta_growth;
-                }*/
+                    projected_growth = total_entity_energy / (e_real)(entity_to_size[entity]);
+                    total_energy[entity] = 0E+00;
+                }
+                new_population[entity] = new_population[entity] + projected_growth;
             }
         }
         entity++;
@@ -303,8 +291,24 @@ void ecosim_cycle(void)
 
     while (entity < ENTITY_SIZE)
     {
-        new_population[entity] = population[entity];
+        if (new_population[entity] <= 0)
+        {
+            new_population[entity] = 0;
+            if (event_subscription)
+            {
+                (*event_subscription)(EVENT_EXTINCTION, "Extinction");
+            }
+        }
+        population[entity] = new_population[entity];
         entity++;
+    }
+    if (new_dead_animal_energy > 0)
+    {
+        dead_animal_energy = ECOSIM_DEAD_ANIMAL_ENERGY_MAINTAIN_RATE * new_dead_animal_energy;
+    }
+    else
+    {
+        dead_animal_energy = 0;
     }
 }
 

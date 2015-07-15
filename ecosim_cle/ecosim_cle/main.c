@@ -37,12 +37,20 @@
 #include <time.h>
 #include "ecosim.h"
 
+static e_int time_int = 0;
+static e_int no_extinctions = 1;
+
+void main_event(ECOSIM_EVENT value, e_string response)
+{
+    no_extinctions = 0;
+    printf("Extinction at time %ld", time_int);
+}
+
 int main(int argc, const char * argv[])
 {
     e_16bit genetics[ENTITY_GENETICS];
     e_16bit seed[2];
     e_int current_time = time(NULL);
-    e_int time = 0;
     
     if (current_time < 0)
     {
@@ -57,11 +65,23 @@ int main(int argc, const char * argv[])
     
     ecosim_init(genetics);
     
-    while (time < 100)
+    do
     {
         ecosim_cycle();
-        time ++;
-    }
+        time_int ++;
+        if ((time_int & 1023) == 0)
+        {
+            ECOSIM_ENTITY loop = ENTITY_GRASS;
+            while (loop < ENTITY_SIZE)
+            {
+                printf("%f, ", ecosim_population(loop));
+                loop ++;
+            }
+            printf("\n" );
+
+        }
+        
+    }while (no_extinctions);
     
     return 0;
 }

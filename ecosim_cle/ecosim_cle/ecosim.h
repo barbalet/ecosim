@@ -96,6 +96,8 @@ typedef enum
 
 #define ECOSIM_CONSUMPTION_EFFICIENCY_DIVISOR (6.4E+01)
 
+#define ECOSIM_DEAD_ANIMAL_ENERGY_MAINTAIN_RATE (0.98) /* 1 - decay rate */
+
 typedef enum
 {
     EVENT_EXTINCTION = 0,
