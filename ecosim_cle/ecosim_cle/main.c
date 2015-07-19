@@ -74,7 +74,7 @@ int main(int argc, const char * argv[])
             ECOSIM_ENTITY loop = ENTITY_GRASS;
             while (loop < ENTITY_SIZE)
             {
-                printf("%f, ", ecosim_population(loop));
+                printf("%1.2e, ", ecosim_population(loop));
                 loop ++;
             }
             printf("\n" );
