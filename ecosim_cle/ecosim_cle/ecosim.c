@@ -42,6 +42,27 @@ static e_real total_energy[ENTITY_SIZE - ENTITY_FISH];
 
 static e_real dead_animal_energy;
 
+#ifdef DEBUG_SIMPLIFIED_ECOSIM
+
+typedef enum
+{
+    ENTITY_NONE = -1,
+    ENTITY_GRASS = 0,
+    
+    ENTITY_FISH,
+    
+    ENTITY_INSECT,
+    ENTITY_FROG,
+    
+    ENTITY_LIZARD,
+    
+    ENTITY_SIZE,
+    
+    ENTITY_DEAD_ANIMAL,
+} ECOSIM_ENTITY;
+
+#else
+
 const ECOSIM_SIZE entity_to_size[ENTITY_SIZE] =
 {
     SIZE_20_GRAM,        /* ENTITY_GRASS */
@@ -63,6 +84,8 @@ const ECOSIM_SIZE entity_to_size[ENTITY_SIZE] =
     SIZE_8_KILOGRAMS, /* ENTITY_CAT */
     SIZE_160_KILOGRAMS, /* ENTITY_APE */
 };
+
+#endif
 
 const ECOSIM_CONSUMPTION_EFFICIENCY entity_to_efficiency[ENTITY_SIZE - ENTITY_FISH] =
 {

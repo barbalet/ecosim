@@ -42,6 +42,30 @@ typedef long            e_int;
 typedef unsigned short  e_16bit;
 typedef char *          e_string;
 
+#define DEBUG_SIMPLIFIED_ECOSIM
+
+
+#ifdef DEBUG_SIMPLIFIED_ECOSIM
+
+typedef enum
+{
+    ENTITY_NONE = -1,
+    ENTITY_GRASS = 0,
+    
+    ENTITY_FISH,
+    
+    ENTITY_INSECT,
+    ENTITY_FROG,
+    
+    ENTITY_LIZARD,
+
+    ENTITY_SIZE,
+    
+    ENTITY_DEAD_ANIMAL,
+} ECOSIM_ENTITY;
+
+#else
+
 typedef enum
 {
     ENTITY_NONE = -1,
@@ -67,6 +91,8 @@ typedef enum
     
     ENTITY_DEAD_ANIMAL,
 } ECOSIM_ENTITY;
+
+#endif
 
 #define ENTITY_CONSUMPTION (22)
 
